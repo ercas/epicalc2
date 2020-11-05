@@ -8,11 +8,29 @@ contingency <- function(a = integer(),
   # Primary data structure is that of a 2x2 array
   #object <- array(c(a, b, c, d), dim = c(2, 2))
   # Primary data structure is that of a 2x2 matrix
-  object <- matrix(c(a, b, c, d), nrow=2)
+  object <- matrix(c(a, c, b, d), nrow=2)
   
   structure(
     object,
     class = c(class, "contingency")
+  )
+}
+
+# convert a dataframe into a contingency table
+as.contingency <- function(df = data.frame(),
+                           exposures = character(),
+                           cases = character()) {
+  if (length(exposures) == 0) {
+    stop("name of exposure column must be provided if initializing from a data.frame")
+  } else if (length(cases) == 0) {
+    stop("name of cases column must be provided if initializing from a data.frame")
+  }
+  
+  contingency(
+    a = sum(df[exposures] == 1 & df[cases] == 1),
+    b = sum(df[exposures] == 0 & df[cases] == 1),
+    c = sum(df[exposures] == 1 & df[cases] == 0),
+    d = sum(df[exposures] == 0 & df[cases] == 0)
   )
 }
 
@@ -55,29 +73,20 @@ as.data.frame.contingency <- function(object,
 }
 
 # 2x2 table subclass for count data
-contingency.count <- function(a = integer(),
-                              b = integer(),
-                              c = integer(),
-                              d = integer()) {
-  object <- contingency(a, b, c, d, class="count")
+contingency.count <- function(...) {
+  object <- contingency(..., class="count")
   object
 }
 
 # 2x2 table subclass for person-time data
-contingency.persontime <- function(a = integer(),
-                              b = integer(),
-                              c = integer(),
-                              d = integer()) {
-  object <- contingency(a, b, c, d, class="persontime")
+contingency.persontime <- function(...) {
+  object <- contingency(..., class="persontime")
   object
 }
 
 # 2x2 table subclass for case-control data
-contingency.casecontrol <- function(a = integer(),
-                                    b = integer(),
-                                    c = integer(),
-                                    d = integer()) {
-  object <- contingency(a, b, c, d, class="casecontrol")
+contingency.casecontrol <- function(...) {
+  object <- contingency(..., class="casecontrol")
   object
 }
 summary.casecontrol <- function(object,
@@ -96,7 +105,7 @@ summary.casecontrol <- function(object,
   n.0 <- b + d
   total <- m.1 + m.0
   
-  z <- qnorm(1 - 0.05/2)
+  z <- qnorm(1 - alpha/2)
   
   # odds ratio and confidence interval
   odds.ratio <- (a*d) / (b*c)
@@ -109,8 +118,8 @@ summary.casecontrol <- function(object,
   x <- a
   expected <- n.1 * m.1 / total
   variance <- (m.1 * m.0 * n.1 * n.0) / (total^2 * (total - 1))
-  z.sq <- (x - expected)^2 / variance
-  p.association <- 1 - pchisq(z.sq, 1)
+  z.sq.association <- (x - expected)^2 / variance
+  p.association <- 1 - pchisq(z.sq.association, 1)
   
   # print
   cat(
@@ -124,9 +133,20 @@ summary.casecontrol <- function(object,
       sprintf("= %f", p.assoc)
     )
   )
+  
+  invisible(structure(
+    list(
+      odds.ratio = odds.ratio,
+      odds.ratio.ci = odds.ratio.ci,
+      z.sq.association = z.sq.association,
+      p.association = p.association
+    ),
+    class = "summary.casecontrol"
+  ))
 }
 
 # testing
-test <- contingency.casecontrol(623, 519, 1062, 1641)
-summary(test)
+#test <- contingency.casecontrol(623, 519, 1062, 1641)
+#summary(test)
 #as.data.frame(test)
+#as.data.frame(as.contingency(data, "htn", "dead"))
