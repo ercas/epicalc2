@@ -1,14 +1,14 @@
 # Base 2x2 table class
-contingency <- function(a = integer(),
-                        b = integer(),
-                        c = integer(),
-                        d = integer(),
+contingency <- function(a = numeric(),
+                        b = numeric(),
+                        c = numeric(),
+                        d = numeric(),
                         ...,
                         class = character()) {
   # Primary data structure is that of a 2x2 array
-  #object <- array(c(a, b, c, d), dim = c(2, 2))
+  #object <- array(as.numeric(c(a, b, c, d)), dim = c(2, 2))
   # Primary data structure is that of a 2x2 matrix
-  object <- matrix(c(a, c, b, d), nrow=2)
+  object <- matrix(as.numeric(c(a, c, b, d)), nrow=2)
   
   structure(
     object,
@@ -29,11 +29,12 @@ as.contingency <- function(object,
       stop("name of cases column must be provided if initializing from a data.frame")
     }
     
+    tabulated <- table(object[,exposures], object[,cases])
     contingency(
-      a = sum(object[exposures] == 1 & object[cases] == 1),
-      b = sum(object[exposures] == 0 & object[cases] == 1),
-      c = sum(object[exposures] == 1 & object[cases] == 0),
-      d = sum(object[exposures] == 0 & object[cases] == 0),
+      a = tabulated[2, 2],
+      b = tabulated[1, 2],
+      c = tabulated[2, 1],
+      d = tabulated[1, 1],
       class = class
     )
   } else {
@@ -83,10 +84,28 @@ as.data.frame.contingency <- function(object,
 contingency.count <- function(...) {
   contingency(..., class="count")
 }
+as.count <- function(...) as.contingency(..., class="count")
+summary.count <- function(object,
+                          alpha = 0.05,
+                          ...) {
+  # TODO
+}
+print.summary.count <- function(x, ...) {
+  # TODO
+}
 
 # 2x2 table subclass for person-time data
 contingency.persontime <- function(...) {
   contingency(..., class="persontime")
+}
+as.persontime <- function(...) as.contingency(..., class="persontime")
+summary.persontime <- function(object,
+                               alpha = 0.05,
+                               ...) {
+  # TODO
+}
+print.summary.persontime <- function(x, ...) {
+  # TODO
 }
 
 # 2x2 table subclass for case-control data
@@ -123,7 +142,7 @@ summary.casecontrol <- function(object,
   expected <- n.1 * m.1 / total
   variance <- (m.1 * m.0 * n.1 * n.0) / (total^2 * (total - 1))
   z.sq <- (x - expected)^2 / variance
-  p.value <- 1 - pchisq(z.sq, 1)
+  p.value <- pchisq(z.sq, 1, lower.tail = FALSE)
   
   structure(
     list(
@@ -159,7 +178,7 @@ print.summary.casecontrol <- function(x, ...) {
 }
 
 # testing
-#test <- contingency.casecontrol(623, 519, 1062, 1641)
-#summary(test)
+test <- contingency.casecontrol(623, 519, 1062, 1641)
+summary(test)
 #as.data.frame(test)
 #as.data.frame(as.contingency(data, "htn", "dead"))
