@@ -17,21 +17,25 @@ contingency <- function(a = integer(),
 }
 
 # convert a dataframe into a contingency table
-as.contingency <- function(df = data.frame(),
+as.contingency <- function(object,
                            exposures = character(),
                            cases = character()) {
-  if (length(exposures) == 0) {
-    stop("name of exposure column must be provided if initializing from a data.frame")
-  } else if (length(cases) == 0) {
-    stop("name of cases column must be provided if initializing from a data.frame")
+  if (inherits(object, "data.frame")) {
+    if (length(exposures) == 0) {
+      stop("name of exposure column must be provided if initializing from a data.frame")
+    } else if (length(cases) == 0) {
+      stop("name of cases column must be provided if initializing from a data.frame")
+    }
+    
+    contingency(
+      a = sum(object[exposures] == 1 & object[cases] == 1),
+      b = sum(object[exposures] == 0 & object[cases] == 1),
+      c = sum(object[exposures] == 1 & object[cases] == 0),
+      d = sum(object[exposures] == 0 & object[cases] == 0)
+    )
+  } else {
+    stop("unsupported class")
   }
-  
-  contingency(
-    a = sum(df[exposures] == 1 & df[cases] == 1),
-    b = sum(df[exposures] == 0 & df[cases] == 1),
-    c = sum(df[exposures] == 1 & df[cases] == 0),
-    d = sum(df[exposures] == 0 & df[cases] == 0)
-  )
 }
 
 # Convert any contingency table into a dataframe and label the rows + columns
