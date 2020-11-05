@@ -19,7 +19,9 @@ contingency <- function(a = integer(),
 # convert a dataframe into a contingency table
 as.contingency <- function(object,
                            exposures = character(),
-                           cases = character()) {
+                           cases = character(),
+                           ...,
+                           class = character()) {
   if (inherits(object, "data.frame")) {
     if (length(exposures) == 0) {
       stop("name of exposure column must be provided if initializing from a data.frame")
@@ -31,7 +33,8 @@ as.contingency <- function(object,
       a = sum(object[exposures] == 1 & object[cases] == 1),
       b = sum(object[exposures] == 0 & object[cases] == 1),
       c = sum(object[exposures] == 1 & object[cases] == 0),
-      d = sum(object[exposures] == 0 & object[cases] == 0)
+      d = sum(object[exposures] == 0 & object[cases] == 0),
+      class = class
     )
   } else {
     stop("unsupported class")
@@ -78,31 +81,27 @@ as.data.frame.contingency <- function(object,
 
 # 2x2 table subclass for count data
 contingency.count <- function(...) {
-  object <- contingency(..., class="count")
-  object
+  contingency(..., class="count")
 }
 
 # 2x2 table subclass for person-time data
 contingency.persontime <- function(...) {
-  object <- contingency(..., class="persontime")
-  object
+  contingency(..., class="persontime")
 }
 
 # 2x2 table subclass for case-control data
 contingency.casecontrol <- function(...) {
-  object <- contingency(..., class="casecontrol")
-  object
+  contingency(..., class = "casecontrol")
 }
+as.casecontrol <- function(...) as.contingency(..., class = "casecontrol")
 summary.casecontrol <- function(object,
                                 alpha = 0.05,
                                 ...) {
-  print(as.data.frame(object))
-  
   # constants
-  a <- test[1,1]
-  b <- test[1,2]
-  c <- test[2,1]
-  d <- test[2,2]
+  a <- object[1,1]
+  b <- object[1,2]
+  c <- object[2,1]
+  d <- object[2,2]
   m.1 <- a + b
   m.0 <- c + d
   n.1 <- a + c
@@ -117,36 +116,46 @@ summary.casecontrol <- function(object,
   variance <- 1/a + 1/b + 1/c + 1/d
   error <- z * variance
   odds.ratio.ci <- exp(c(x - error, x + error))
+  names(odds.ratio.ci) <- c("lower", "upper")
   
   # test of association
   x <- a
   expected <- n.1 * m.1 / total
   variance <- (m.1 * m.0 * n.1 * n.0) / (total^2 * (total - 1))
-  z.sq.association <- (x - expected)^2 / variance
-  p.association <- 1 - pchisq(z.sq.association, 1)
+  z.sq <- (x - expected)^2 / variance
+  p.value <- 1 - pchisq(z.sq, 1)
   
-  # print
-  cat(
-    sprintf("\nUsing a critical value of alpha = %f", alpha),
-    "\n",
-    sprintf("\nOdds ratio:\t%f (%f, %f)", odds.ratio, odds.ratio.ci[1], odds.ratio.ci[2]),
-    sprintf("\nChi-sq test for association:\tp"),
-    ifelse(
-      p.association < 1e-6,
-      "< 0.000001", 
-      sprintf("= %f", p.assoc)
-    )
-  )
-  
-  invisible(structure(
+  structure(
     list(
+      matrix = object,
+      alpha = alpha,
       odds.ratio = odds.ratio,
       odds.ratio.ci = odds.ratio.ci,
-      z.sq.association = z.sq.association,
-      p.association = p.association
+      z.sq = z.sq,
+      p.value = p.value
     ),
     class = "summary.casecontrol"
-  ))
+  )
+}
+print.summary.casecontrol <- function(x, ...) {
+  print(as.data.frame(x$matrix))
+  cat(
+    sprintf("\nUsing a critical value of alpha = %f", x$alpha),
+    "\n",
+    sprintf(
+      "\nOdds ratio:\t%f (%f, %f)",
+      x$odds.ratio,
+      x$odds.ratio.ci["lower"],
+      x$odds.ratio.ci["upper"]
+    ),
+    sprintf("\nChi-sq test for association:\tp"),
+    ifelse(
+      x$p.value < 1e-6,
+      "< 0.000001", 
+      sprintf("= %f", x$p.value)
+    )
+  )
+  invisible(x)
 }
 
 # testing
